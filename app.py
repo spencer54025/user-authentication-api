@@ -28,7 +28,7 @@ class User(db.Model):
 
 class UserSchema(ma.Schema):
     class Meta:
-        feilds = ('id', 'username', 'password', 'email')
+        fields = ('id', 'username', 'password', 'email')
 
 user_schema = UserSchema()
 multi_user_schema = UserSchema(many=True)
@@ -45,7 +45,7 @@ def add_user():
 
     pw_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 
-    new_user = User(username, password, email, pw_hash)
+    new_user = User(username, email, pw_hash)
     db.session.add(new_user)
     db.session.commit()
 
@@ -76,8 +76,48 @@ def get_all_users():
     users = db.session.query(User).all()
     return jsonify(multi_user_schema.dump(users))
 
-# @app.route('/user/update/<id>', methods=["PUT"])
-# def update_user(id):
+
+@app.route('/user/delete/<id>', methods=["DELETE"])
+def delete_user(id):
+    deleted_user = db.session.query(User).filter(User.id == id).first()
+
+    db.session.delete(deleted_user)
+    db.session.commit()
+    return jsonify('user was deleted')
+
+@app.route('/user/update/<id>', methods=["PUT"])
+def update_user(id):
+    if request.content_type != 'application/json':
+        return jsonify('data must be json')
+
+    put_data = request.get_json()
+    username = put_data.get('username')
+    email = put_data.get('email')
+
+    updated_user = db.session.query(User).filter(User.id == id).first()
+
+    if username != None:
+        updated_user.username = username
+    if email != None:
+        updated_user.email = email
+    
+    db.session.commit()
+    return jsonify(user_schema.dump(updated_user))
+
+
+@app.route('/password/update/<id>', methods=["PUT"])
+def update_password(id):
+    if request.content_type != 'application/json':
+        return jsonify('data must be json')
+    
+    password = request.get_json().get('password')
+
+    user = db.session.query(User).filter(User.id == id).first()
+    pw_hash = bcrypt.genereate_password_hash(password).decode('utf-8')
+    user.password = pw_hash
+
+    db.session.commit()
+    return jsonify(user_schema.dump(user))
 
 
 
